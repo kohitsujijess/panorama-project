@@ -12,24 +12,28 @@ class PanoramaImage extends Component {
   takePhoto = async () => {
     const { cameraPermssion } = await Permissions.askAsync(Permissions.CAMERA);
     const { cameraRollPermssion } = await Permissions.askAsync(Permissions.CAMERA_ROLL);
-    //if (cameraPermssion === 'granted' && cameraRollPermssion === 'granted') {
-      let result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        quality: 1,
-
-      });
-      // parameterなどを編集してパノラマの機能を再現できない場合は、nativeのパノラマ機能を呼び出す
-      //window.webkit.messageHandlers.<機能の名前>;
-      
-    //let result = ImagePicker.launchCamera({mediaType: 'mixed' });
-
-      console.log(result);
-
-      if (!result.cancelled) {
-        this.setState({image: result.uri});
+    this.setState({ cameraPermission: status === 'granted' });
+    if (cameraPermssion === 'granted' && cameraRollPermssion === 'granted') {
+        // 撮影ボタンを押したときの処理
+        let picture = await ImagePicker.takePictureAsync();
+        Toast.show({
+          text: 'Success',
+          buttonText: 'Okay',
+          duration: 2000,
+        });
+        // カメラを起動させるボタンを押してから撮影ボタンを押すまでの間に、captureの処理を走らせる
+        console.log(picture.uri);
+        let result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          quality: 1,
+  
+        });  
+  
+      if (!picture.cancelled) {
+        this.setState({image: picture.uri});
       }
 
-    //}
+    }
   }
 
   render() {
