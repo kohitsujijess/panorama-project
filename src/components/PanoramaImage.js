@@ -1,77 +1,113 @@
-import React, { Component } from 'react';
-import { View, Text, Button, Image } from 'react-native';
-import { ImagePicker } from 'expo';
-import { Permissions } from 'expo';
-//import ImagePicker from 'react-native-image-picker';
+import React from 'react';
+import { Text, View, TouchableOpacity } from 'react-native';
+import { Camera, Permissions, Icon } from 'expo';
+import mergeImages from 'merge-images';
+const pictures = [];
 
-class PanoramaImage extends Component {
-  state = {
-    image: null
+export default class PanoramaImage extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      hasCameraPermission: null,
+      type: Camera.Constants.Type.back,
+    };
+
+    this.takePicture = this.takePicture.bind(this);
   }
 
-  takePhoto = async () => {
-    const { cameraPermssion } = await Permissions.askAsync(Permissions.CAMERA);
-    const { cameraRollPermssion } = await Permissions.askAsync(Permissions.CAMERA_ROLL);
-    this.setState({ cameraPermission: status === 'granted' });
-    if (cameraPermssion === 'granted' && cameraRollPermssion === 'granted') {
-        // 撮影ボタンを押したときの処理
-        let picture = await ImagePicker.takePictureAsync();
-        Toast.show({
-          text: 'Success',
-          buttonText: 'Okay',
-          duration: 2000,
-        });
-        // カメラを起動させるボタンを押してから撮影ボタンを押すまでの間に、captureの処理を走らせる
-        console.log(picture.uri);
-        let result = await ImagePicker.launchCameraAsync({
-          allowsEditing: true,
-          quality: 1,
-  
-        });  
-  
-      if (!picture.cancelled) {
-        this.setState({image: picture.uri});
-      }
+  async componentWillMount() {
+    const { status } = await Permissions.askAsync(Permissions.CAMERA);
+    this.setState({
+      hasCameraPermission: status === 'granted',
+    });
+  }
 
+  async takePicture() {
+    const take = async () => {
+      let pictureData = await this.camera.takePictureAsync();
+      pictures.push(pictureData.uri);
     }
+    // TODO 実機を矢印の方向に動かすというメッセージを表示
+
+    let interVal = setInterval(take, 1000);
+    setTimeout(function(){
+      clearInterval(interVal);
+    }, 10000);
+
+    const mergePictures = () => {
+      console.log(pictures);
+      mergeImages(pictures).then(b64 => { 
+        console.log(b64);
+        CameraRoll.saveToCameraRoll(b64, ['photo']);
+      });
+    }
+     
+    const delayRun = (waitSeconds, someFunction) => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve(someFunction())
+        }, waitSeconds)
+      })  
+    }
+     
+    delayRun(12000, mergePictures);
   }
 
   render() {
-    let { image } = this.state;
+    const {
+      hasCameraPermission,
+    } = this.state;
 
-    return(
-      <View style={styles.containerStyle}>
-        <Text>Panorama</Text>
-
-        <Button
-          onPress={this.takePhoto}
-          title="panorama"
-        />
-
-        {
-          image &&
-          <Image
-            source={{uri: image}}
-            style={{width: 300, height: 300}}
-          />
-        }
+    if (hasCameraPermission === null || hasCameraPermission === false) {
+      return (
+        <View>
+          <Text>
+            カメラの使用が許可されていません。
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <View
+        style={{
+          flex: 1,
+        }}
+      >
+        <Camera
+          style={{
+            flex: 1,
+          }}
+          type={this.state.type}
+          ref={(ref) => {
+            this.camera = ref;
+          }}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'transparent',
+              flexDirection: 'row',
+            }}
+          >
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                alignSelf: 'flex-end',
+                alignItems: 'center',
+              }}
+              onPress={() => {
+                this.takePicture();
+              }}
+            >
+              <Icon.MaterialIcons
+                name="camera"
+                size={70}
+                style={{ marginBottom: 20 }}
+              />
+            </TouchableOpacity>
+          </View>
+        </Camera>
       </View>
     );
   }
 }
-
-const styles = {
-  containerStyle: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  textStyle: {
-    fontSize: 20,
-    marginBottom: 20,
-    textAlign: 'center',
-    marginHorizontal: 15
-  }
-}
-
-export default PanoramaImage;
